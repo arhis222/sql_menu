@@ -1,0 +1,333 @@
+<?xml version="1.0" encoding="UTF-8"?><sqlb_project><db path="C:/Users/Arhan/OneDrive/Masaüstü/python-inf403/data/ramassage_poubelles.db" readonly="0" foreign_keys="1" case_sensitive_like="0" temp_store="0" wal_autocheckpoint="1000" synchronous="2"/><attached/><window><main_tabs open="structure browser pragmas query" current="3"/></window><tab_structure><column_width id="0" width="300"/><column_width id="1" width="0"/><column_width id="2" width="125"/><column_width id="3" width="4030"/><column_width id="4" width="0"/><expanded_item id="0" parent="1"/><expanded_item id="1" parent="1"/><expanded_item id="2" parent="1"/><expanded_item id="3" parent="1"/></tab_structure><tab_browse><current_table name="4,9:mainQuartiers"/><default_encoding codec=""/><browse_table_settings><table schema="main" name="Balayeurs" show_row_id="0" encoding="" plot_x_axis="" unlock_view_pk="_rowid_"><sort/><column_widths><column index="1" value="101"/><column index="2" value="148"/><column index="3" value="107"/><column index="4" value="132"/></column_widths><filter_values/><conditional_formats/><row_id_formats/><display_formats/><hidden_columns/><plot_y_axes/><global_filter/></table><table schema="main" name="Camion_Total_dech" show_row_id="0" encoding="" plot_x_axis="" unlock_view_pk="_rowid_"><sort/><column_widths><column index="1" value="132"/><column index="2" value="102"/></column_widths><filter_values/><conditional_formats/><row_id_formats/><display_formats/><hidden_columns/><plot_y_axes/><global_filter/></table><table schema="main" name="CamionsOrdure" show_row_id="0" encoding="" plot_x_axis="" unlock_view_pk="_rowid_"><sort/><column_widths><column index="1" value="132"/><column index="2" value="136"/><column index="3" value="110"/><column index="4" value="230"/><column index="5" value="158"/></column_widths><filter_values/><conditional_formats/><row_id_formats/><display_formats/><hidden_columns/><plot_y_axes/><global_filter/></table><table schema="main" name="Programmations" show_row_id="0" encoding="" plot_x_axis="" unlock_view_pk="_rowid_"><sort/><column_widths><column index="1" value="121"/><column index="2" value="132"/><column index="3" value="99"/></column_widths><filter_values/><conditional_formats/><row_id_formats/><display_formats/><hidden_columns/><plot_y_axes/><global_filter/></table><table schema="main" name="Quartiers" show_row_id="0" encoding="" plot_x_axis="" unlock_view_pk="_rowid_"><sort/><column_widths><column index="1" value="121"/><column index="2" value="118"/><column index="3" value="113"/><column index="4" value="157"/></column_widths><filter_values/><conditional_formats/><row_id_formats/><display_formats/><hidden_columns/><plot_y_axes/><global_filter/></table></browse_table_settings></tab_browse><tab_sql><sql name="INF403_sql_projet.sql">DROP TABLE IF EXISTS Modeles;
+DROP TABLE IF EXISTS CentresOrdure;
+DROP TABLE IF EXISTS Programmations;
+DROP TABLE IF EXISTS CamionsOrdure;
+DROP TABLE IF EXISTS Quartiers;
+DROP TABLE IF EXISTS Balayeurs;
+
+CREATE TABLE IF NOT EXISTS Balayeurs (
+	idBalayeur INTEGER NOT NULL PRIMARY KEY,
+	pseudoBalayeur TEXT NOT NULL, 
+	telBalayeur INTEGER,
+	plaqueCamion INTEGER NOT NULL,
+	CONSTRAINT fk_bal_plaqueCamion FOREIGN KEY (plaqueCamion) REFERENCES CamionsOrdure(plaqueCamion)
+
+);
+
+CREATE TABLE IF NOT EXISTS Quartiers (
+	codeQuartier INTEGER NOT NULL PRIMARY KEY,
+	nomQuartier TEXT NOT NULL, 
+	popQuartier INTEGER NOT NULL,
+	nb_poubQuartier INTEGER NOT NULL
+	
+);
+
+CREATE TABLE IF NOT EXISTS CamionsOrdure (
+	plaqueCamion INTEGER NOT NULL PRIMARY KEY,  
+	cap_eqCamion INTEGER NOT NULL, 
+	nomModele TEXT,
+	nomCentre TEXT,
+	CONSTRAINT fk_camion_nomCentre FOREIGN KEY (nomCentre) REFERENCES CentresOrdure(nomCentre),
+	CONSTRAINT fk_camion_nomModele FOREIGN KEY (nomModele) REFERENCES Modeles(nomModele)
+);
+
+CREATE TABLE IF NOT EXISTS Programmations (
+	codeQuartier INTEGER NOT NULL,
+	plaqueCamion INTEGER NOT NULL,
+	dateProg DATE NOT NULL,
+	heureProg TEXT NOT NULL,
+	CONSTRAINT pk_prog_codeQuartier_plaqueCamion PRIMARY KEY (codeQuartier, plaqueCamion),
+	CONSTRAINT fk_prog_codeQuartier FOREIGN KEY (codeQuartier) REFERENCES Quartiers(codeQuartier),
+	CONSTRAINT fk_prog_plaqueCamion FOREIGN KEY (plaqueCamion) REFERENCES CamionsOrdure(plaqueCamion)
+
+);
+
+
+CREATE TABLE IF NOT EXISTS CentresOrdure (
+	nomCentre TEXT NOT NULL PRIMARY KEY,
+	capCentre INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS Modeles (
+	nomModele TEXT NOT NULL PRIMARY KEY,
+	tailleModele TEXT NOT NULL CHECK (tailleModele IN('Petit', 'Moyen', 'Grand')),
+	cap_dep_maxModele INTEGER	
+);
+
+-- Création des déclencheurs
+
+DROP TRIGGER IF EXISTS check_capacity_insert;
+DROP TRIGGER IF EXISTS check_capacity_update;
+DROP TRIGGER IF EXISTS check_time_insert;
+DROP TRIGGER IF EXISTS check_time_update;
+DROP TRIGGER IF EXISTS check_date_time_format_insert;
+DROP TRIGGER IF EXISTS check_date_time_format_update;
+
+
+
+CREATE TRIGGER check_capacity_insert
+
+BEFORE INSERT ON CamionsOrdure
+FOR EACH ROW
+WHEN (
+    NEW.qua_dechCamion &gt; (
+        SELECT cap_dep_maxModele
+        FROM Modeles
+        WHERE nomModele = NEW.nomModele
+    )
+)
+BEGIN
+    SELECT RAISE(ABORT, 'La quantité déchet du camion dépasse la capacité maximale du modèle');
+END;
+
+
+CREATE TRIGGER check_capacity_update
+BEFORE UPDATE ON CamionsOrdure
+FOR EACH ROW
+WHEN (
+    NEW.qua_dechCamion &gt; (
+        SELECT cap_dep_maxModele
+        FROM Modeles
+        WHERE nomModele = NEW.nomModele
+    )
+)
+BEGIN
+    SELECT RAISE(ABORT, 'La quantité déchet camion dépasse la capacité maximale du modèle');
+END;
+
+
+
+CREATE TRIGGER check_time_insert
+BEFORE INSERT ON Programmations
+FOR EACH ROW
+BEGIN
+    SELECT CASE
+        WHEN (NEW.heureProg &lt; '05:00' OR NEW.heureProg &gt; '19:00')
+        THEN RAISE (ABORT, 'L''heure doit être comprise entre 05:00 et 19:00')
+    END;
+END;
+
+CREATE TRIGGER check_time_update
+BEFORE UPDATE ON Programmations
+FOR EACH ROW
+BEGIN
+    SELECT CASE
+        WHEN (NEW.heureProg &lt; '05:00' OR NEW.heureProg &gt; '19:00')
+        THEN RAISE (ABORT, 'L''heure doit être comprise entre 05:00 et 19:00')
+    END;
+END;
+
+CREATE TRIGGER check_date_time_format_insert
+BEFORE INSERT ON Programmations
+FOR EACH ROW
+BEGIN
+    SELECT CASE  
+		WHEN(NEW.dateProg NOT LIKE '__-__-____' OR NEW.heureProg NOT LIKE '__:__') 
+		THEN RAISE(ABORT, 'Format de date ou heure incorrect. Veuillez saisir une date et une heure au format correct.')
+    END ;
+END;
+
+
+
+CREATE TRIGGER check_date_time_format_update
+BEFORE UPDATE ON Programmations
+FOR EACH ROW
+BEGIN
+    SELECT CASE  
+		WHEN(NEW.dateProg NOT LIKE '__-__-____' OR NEW.heureProg NOT LIKE '__:__') 
+		THEN RAISE(ABORT, 'Format de date ou heure incorrect. Veuillez saisir une date et une heure au format correct.')
+    END ;
+END;
+
+
+
+--CREATE INDEX idx_programmations_dateheure ON Programmations(dateProg, heureProg);</sql><sql name="tables.sql">CREATE TABLE IF NOT EXISTS Balayeurs (
+	idBalayeur INTEGER NOT NULL PRIMARY KEY,
+	pseudoBalayeur TEXT NOT NULL,
+	telBalayeur INTEGER,
+	plaqueCamion INTEGER NOT NULL,
+	CONSTRAINT fk_bal_plaqueCamion FOREIGN KEY (plaqueCamion) REFERENCES CamionsOrdure(plaqueCamion)
+);
+
+CREATE TABLE IF NOT EXISTS Quartiers (
+	codeQuartier INTEGER NOT NULL PRIMARY KEY,
+	nomQuartier TEXT NOT NULL,
+	popQuartier INTEGER NOT NULL,
+	nb_poubQuartier INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS CamionsOrdure (
+	plaqueCamion INTEGER NOT NULL PRIMARY KEY,
+	cap_eqCamion INTEGER NOT NULL,
+	nomModele TEXT,
+	nomCentre TEXT,
+	CONSTRAINT fk_camion_nomCentre FOREIGN KEY (nomCentre) REFERENCES CentresOrdure(nomCentre),
+	CONSTRAINT fk_camion_nomModele FOREIGN KEY (nomModele) REFERENCES Modeles(nomModele)
+);
+
+CREATE TABLE IF NOT EXISTS Programmations (
+	codeQuartier INTEGER NOT NULL,
+	plaqueCamion INTEGER NOT NULL,
+	heureProg TEXT NOT NULL CHECK (heureProg LIKE '__:__' AND heureProg &gt;= '05:00' AND heureProg &lt; '19:00'),
+	CONSTRAINT pk_prog_codeQuartier_plaqueCamion PRIMARY KEY (codeQuartier, plaqueCamion),
+	CONSTRAINT fk_prog_codeQuartier FOREIGN KEY (codeQuartier) REFERENCES Quartiers(codeQuartier),
+	CONSTRAINT fk_prog_plaqueCamion FOREIGN KEY (plaqueCamion) REFERENCES CamionsOrdure(plaqueCamion)
+);
+
+
+CREATE TABLE IF NOT EXISTS CentresOrdure (
+	nomCentre TEXT NOT NULL PRIMARY KEY,
+	capCentre INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS Modeles (
+	nomModele TEXT NOT NULL PRIMARY KEY,
+	tailleModele TEXT NOT NULL,
+	cap_dep_maxModele INTEGER,
+	CONSTRAINT ck_tailleModele CHECK (tailleModele IN ('Petit', 'Moyen', 'Grand'))
+);
+</sql><sql name="INSERTS_CORRECT.sql">-- Ajout de données dans la table CentresOrdure
+INSERT INTO CentresOrdure (nomCentre, capCentre)
+VALUES ('Pittsburg Waste Management', 5000),
+       ('GreenCity Trash Services', 7000),
+       ('EcoClean Waste Disposal', 10000),
+       ('CleanCity Waste Solutions', 8000),
+       ('EcoSolutions Recycling Center', 6000),
+       ('Pittsburg Recycling Hub', 9000),
+       ('Utkuland',1000);
+
+-- Ajout de données dans la table Modeles
+INSERT INTO Modeles (nomModele, tailleModele, cap_dep_maxModele)
+    VALUES ('FoCle1000', 'Grand', 150),
+       ('TenMas2000', 'Grand', 150),
+       ('NewDis3000', 'Grand', 150),
+       ('EcoCon1453', 'Moyen', 100),
+       ('EcoGre1922', 'Moyen', 100),
+       ('OtoCar1881', 'Petit', 050),
+       ('Varan1923','Petit', 050),
+       ('MamaMia2023','Moyen', 090);
+
+-- Ajout de données dans la table CamionsOrdure (plaqueCamion est une clé primaire)
+INSERT INTO CamionsOrdure (plaqueCamion, cap_eqCamion, nomModele, nomCentre)
+VALUES (123, 08, 'FoCle1000', 'Pittsburg Waste Management'),
+       (456, 08, 'TenMas2000', 'GreenCity Trash Services'),
+       (789, 08, 'NewDis3000', 'EcoClean Waste Disposal'),
+       (101, 06, 'EcoCon1453', 'CleanCity Waste Solutions'),
+       (202, 04, 'EcoGre1922', 'EcoSolutions Recycling Center'),
+       (303, 04, 'OtoCar1881', 'Pittsburg Recycling Hub'),
+       (222, 04, 'Varan1923', 'Pittsburg Recycling Hub'),
+       (333, 06, 'Varan1923', 'Utkuland');
+
+-- Ajout de données dans la table Quartiers
+INSERT INTO Quartiers (codeQuartier, nomQuartier, popQuartier, nb_poubQuartier)
+VALUES (01, 'Downtown', 20000, 20),
+       (02, 'Shadyside', 15000, 30),
+       (03, 'Squirrel Hill', 18000, 10),
+       (04, 'Oakland', 22000, 30),
+       (05, 'South Side', 25000, 40),
+       (06, 'North Shore', 17000, 50);
+
+
+-- Ajout de données dans la table Balayeurs (plaqueCamion est une clé étrangère)
+INSERT INTO Balayeurs (idBalayeur, pseudoBalayeur, telBalayeur, plaqueCamion)
+VALUES (01, 'Sophia', 555123456, 123),
+       (02, 'Noah', 555987654, 456),
+       (03, 'Olivia', 555234567, 789),
+       (04, 'Liam', 555666777, 101),
+       (05, 'Ava', 555345678, 202),
+       (06, 'Arhan', 555876543, 222),
+       (34, 'Utku',555234648,303),
+       (07, 'Isabella', 555456789, 101);
+
+
+-- Ajout de données dans la table Programmations avec le format de date 'jj-mm-aaaa'
+INSERT INTO Programmations (codeQuartier, plaqueCamion, heureProg)
+VALUES (01, 123, '08:00'),  -- Heure: 08:00
+       (02, 456, '10:30'),  -- Heure: 10:30
+       (03, 789, '14:15'),  -- Heure: 14:15
+       (04, 101, '09:45'),  -- Heure: 09:45
+       (05, 202, '12:30'),  -- Heure: 12:30
+       (06, 303, '15:15'),  -- Heure: 15:15
+       (01, 101, '17:00');  -- Heure: 17:00
+
+-- Nous ajoutons la colonne qua_dechCamion à la table CamionsOrdure pour le view
+ALTER TABLE CamionsOrdure ADD COLUMN qua_dechCamion INTEGER;
+
+
+
+
+
+</sql><sql name="INSERTS_INCORRECT.sql">-- Tentative d'insertion de données qui violent les contraintes
+
+-- Violation de la contrainte de CHECK FORMAT sur heureProg (08:00 au lieu de 08.00)
+INSERT INTO Programmations (codeQuartier, plaqueCamion, heureProg) VALUES (06, 123, '08.00'); 
+
+-- Violation de la contrainte de CHECK L'intervalle sur heureProg (04:00 n'est pas dans l'intervalle 05:00&lt;= heureProg &lt; 19:00 )
+INSERT INTO Programmations (codeQuartier, plaqueCamion, heureProg) VALUES (06, 123, '04:00');
+
+ -- Violation de la contrainte de CHECK qua_dechCamion &lt;= cap_dep_maxModele avec une trigger
+INSERT INTO CamionsOrdure (plaqueCamion, qua_dechCamion, cap_eqCamion, nomModele, nomCentre) VALUES (444, 100, 3, 'OtoCar1881', 'EcoSolutions Recycling Center'); 
+
+-- Violation de la contrainte PRIMARY KEY sur idBalayeur (UNIQUE constraint)
+INSERT INTO Balayeurs (idBalayeur, pseudoBalayeur, telBalayeur, plaqueCamion) VALUES (05, 'Mahmut', 0987654321, 222); 
+
+-- Violation de la contrainte PRIMARY KEY sur idBalayeur et plaqueCamion (UNIQUE constraint)
+INSERT INTO Programmations (codeQuartier, plaqueCamion, heureProg) VALUES (01, 123, '12:00');
+
+--Violation de la contrainte FOREIGN KEY (il n y a pas la plaque camion 991 dans CamionsOrdure qui est une foreign key)
+INSERT INTO Balayeurs(idBalayeur, pseudoBalayeur, telBalayeur, plaqueCamion) VALUES (09, 'Konur', 515486789, 991);</sql><sql name="suppressions_table">DROP TABLE IF EXISTS Programmations;
+DROP TABLE IF EXISTS Balayeurs;
+DROP TABLE IF EXISTS Quartiers;
+DROP TABLE IF EXISTS CamionsOrdure;
+DROP TABLE IF EXISTS CentresOrdure;
+DROP TABLE IF EXISTS Modeles;
+
+--Suppression du View
+DROP VIEW IF EXISTS Camion_Total_dech;
+
+</sql><sql name="suppression_data_from_table">DELETE FROM Programmations;
+DELETE FROM Balayeurs;
+DELETE FROM Quartiers;
+DELETE FROM CamionsOrdure;
+DELETE FROM CentresOrdure;
+DELETE FROM Modeles;
+</sql><sql name="view.sql">--Creation d'un view qui compte la quantité totale de déchet portée par les camions dans chaque quartier (on suppose qu'ils prennent tout les déchets dans un quartier quand ils y vont)
+--Il peut être null si le camion ne sert pas
+CREATE VIEW IF NOT EXISTS Camion_Total_dech AS
+SELECT p.plaqueCamion, SUM(q.nb_poubQuartier) AS total_dech
+FROM Programmations p
+JOIN Quartiers q USING(codeQuartier)
+GROUP BY p.plaqueCamion;
+
+-- Ajouter les données de la VIEW Camion_Total_dech à la table CamionsOrdure
+UPDATE CamionsOrdure
+SET qua_dechCamion = (
+    SELECT total_dech
+    FROM Camion_Total_dech
+    WHERE CamionsOrdure.plaqueCamion = Camion_Total_dech.plaqueCamion
+);
+</sql><sql name="triggers.sql">-- Création des déclencheurs
+
+DROP TRIGGER IF EXISTS check_capacity_insert;
+DROP TRIGGER IF EXISTS check_capacity_update;
+
+CREATE TRIGGER check_capacity_insert
+BEFORE INSERT ON CamionsOrdure
+FOR EACH ROW
+BEGIN
+    SELECT CASE
+        WHEN ((SELECT cap_dep_maxModele FROM Modeles WHERE nomModele = NEW.nomModele) &lt; NEW.qua_dechCamion)
+        THEN RAISE (ABORT, 'La quantite  du dechet du camion dépasse la capacité maximale du modèle')
+    END;
+END;
+
+CREATE TRIGGER check_capacity_update
+BEFORE UPDATE ON CamionsOrdure
+FOR EACH ROW
+BEGIN
+    SELECT CASE
+        WHEN ((SELECT cap_dep_maxModele FROM Modeles WHERE nomModele = NEW.nomModele) &lt; NEW.qua_dechCamion)
+        THEN RAISE (ABORT, 'La quantite  du dechet du camion dépasse la capacité maximale du modèle')
+    END;
+END;
+</sql><current_tab id="4"/></tab_sql></sqlb_project>
