@@ -1,2 +1,51 @@
-# Interactive Waste Collection Management System with SQL and Python
-I developed an interactive menu system using SQL and Python to manage waste collection operations akin to Pittsburgh's waste management system. This system enables users to perform various tasks such as employee management, truck assignment, route planning, and dumping center management. Users can add, edit, or remove employees, assign them to trucks, and track the number of employees in each truck, along with their destinations and departure times. Route planning functionality optimizes routes based on factors like traffic and distance. Additionally, the system manages dumping center information, including locations, capacities, and accepted waste types, while tracking dumping activities such as time and amount of waste dumped. Furthermore, users can generate reports and analyze waste collection data to gain insights into operations. Overall, this project showcases my proficiency in SQL and Python programming and my ability to design and implement an interactive menu system for efficiently managing complex waste collection operations.
+# Interactive Waste Collection Management System
+
+An interactive command-line application designed to optimize and manage municipal waste collection systems in **Pittsburgh, Pennsylvania**. This project utilizes a relational database to organize garbage collectors, specialized vehicle fleets, city districts, and real-time scheduling.
+
+## 🚀 Features
+
+* **Relational Database:** Robust SQLite schema managing Collectors, Districts, Trucks, Models, and Schedules.
+* **Interactive CLI:** A user-friendly menu system for data visualization, modification, and deletion.
+* **Real-time Validation:** Python-based triggers to ensure truck waste capacity is never exceeded during scheduling.
+* **Advanced Analytics:** Custom queries to track active/inactive trucks, worker schedules, and remaining fleet capacity.
+* **Data Integrity:** Enforces strict constraints on phone numbers (9 digits), IDs (2 digits), and scheduling hours (05:00 - 19:00).
+
+## 📊 Database Schema (UML)
+
+The system is built on a relational model including:
+- **Collectors (Balayeurs):** ID, Pseudo, Phone, Assigned Truck.
+- **Districts (Quartiers):** Code, Name, Population, Number of bins.
+- **Trucks (CamionsOrdure):** License Plate, Team Capacity, Model, Center.
+- **Schedules (Programmations):** District Code, Truck Plate, Collection Time.
+
+## 🛠️ Installation & Usage
+
+### Prerequisites
+- Python 3.x
+- SQLite3
+
+### Setup
+1. Clone the repository:
+   ```bash
+   git clone [https://github.com/arhis222/sql_menu.git](https://github.com/arhis222/sql_menu.git)
+   cd sql_menu
+   ```
+2. Install dependencies (if any, e.g., tabulate for pretty tables) in requirements.txt
+3. Run the application:
+   ```bash
+   python main.py
+   ```
+
+## 📋 Menu Structure
+The application features a structured command-line interface:
+* **[a] Display**: List all information for each class or run custom filtered queries (e.g., finding which collector works at a specific hour).
+* **[m] Modification**: Full CRUD capabilities including inserting, updating, or eliminating records across all tables.
+* **[i] Project Info**: Displays a summary of the project's background regarding pollution issues in Pittsburgh.
+* **[q] Quit**: Securely exit the application.
+
+## ⚖️ License
+This project is licensed under the **MIT License*.
+
+## 👥 Author
+* **Arhan UNAY**
+
